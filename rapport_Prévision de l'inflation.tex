@@ -1,0 +1,290 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{lmodern}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{amsmath}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{caption}
+\usepackage{float}
+\usepackage{enumitem}
+\usepackage{hyperref}
+
+\hypersetup{colorlinks=true, linkcolor=blue!50!black, urlcolor=blue!50!black}
+\captionsetup{font=small, labelfont=bf}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.6em}
+
+% --- Style des requêtes SQL ---
+\lstdefinelanguage{SQLfr}{
+  morekeywords={SELECT,FROM,WHERE,GROUP,BY,ORDER,DESC,LIMIT,AS,COUNT,ROUND,AVG,MIN,MAX,SUM,CASE,WHEN,THEN,ELSE,END,OVER,LAG},
+  sensitive=false,
+  morecomment=[l]{--},
+  morestring=[b]'
+}
+\lstset{
+  language=SQLfr,
+  basicstyle=\ttfamily\footnotesize,
+  keywordstyle=\color{blue!70!black}\bfseries,
+  stringstyle=\color{red!60!black},
+  backgroundcolor=\color{gray!10},
+  frame=single,
+  rulecolor=\color{gray!40},
+  breaklines=true,
+  columns=fullflexible,
+  keepspaces=true
+}
+
+% --- Figure : affiche l'image si elle existe, sinon un cadre vide ---
+\newcommand{\fig}[3]{% #1 = fichier, #2 = largeur, #3 = légende
+  \begin{figure}[H]
+    \centering
+    \IfFileExists{#1}{\includegraphics[width=#2]{#1}}{%
+      \fbox{\parbox{#2}{\centering\vspace{2cm}Figure manquante : \texttt{\detokenize{#1}}\vspace{2cm}}}}
+    \caption{#3}
+  \end{figure}}
+
+\title{\textbf{Prévision du taux d'inflation au Maroc}\\[0.3em]
+\large Données du HCP, 2013 T1 -- 2026 T2}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+%--------------------------------------------------------------
+\section*{Introduction}
+L'inflation désigne la hausse générale et durable des prix. Elle est mesurée ici par la variation annuelle, exprimée en pourcentage, de l'indice des prix à la consommation. Suivre son évolution est essentiel, car elle influence le pouvoir d'achat des ménages, les décisions des entreprises et les choix des responsables économiques. Comprendre comment elle a évolué dans le passé permet aussi de mieux envisager ce qu'elle pourrait devenir.
+
+Ce rapport porte sur l'inflation au Maroc à partir des données du Haut-Commissariat au Plan (HCP). Ces données sont trimestrielles et couvrent la période allant du premier trimestre 2013 au deuxième trimestre 2026, soit 54 observations. Elles ont été chargées dans une base de données SQLite, puis explorées au moyen de dix requêtes SQL. Chaque requête répond à une question précise : l'évolution générale du taux, la moyenne par année, les trimestres les plus élevés, la saisonnalité, la comparaison entre grandes périodes, la variation d'un trimestre à l'autre, les trimestres de déflation et les dépassements du seuil de 2\,\%. Les résultats sont illustrés par des graphiques.
+
+L'objectif du travail est double. Il s'agit d'abord d'analyser l'évolution du taux d'inflation sur plus de treize ans, en identifiant les phases de stabilité, l'épisode de forte hausse de 2022-2023 et le retour à un niveau bas depuis 2024. Il s'agit ensuite, à partir de cette analyse, d'expliquer comment on peut prévoir le taux d'inflation dans le futur. Le rapport présente d'abord les données et leur préparation, puis l'analyse de l'évolution du taux à travers les requêtes et les graphiques, ensuite les causes de l'inflation selon les périodes, et enfin la démarche de prévision qui en découle, suivie d'une conclusion.
+
+%--------------------------------------------------------------
+\section{Données et base SQLite}
+Dans les données, l'année n'est écrite que sur la ligne T1 ; elle a été propagée vers les lignes T2, T3 et T4. Les deux derniers trimestres, vides (2026 T3 et T4), ont été supprimés : il reste 54 observations. Les données sont chargées dans une base SQLite, dans une table \texttt{inflation} de cinq colonnes : \texttt{ordre}, \texttt{periode}, \texttt{annee}, \texttt{trimestre} et \texttt{inflation}.
+
+\subsection*{Requête 1 -- aperçu des données}
+\begin{lstlisting}
+SELECT * FROM inflation LIMIT 10;
+\end{lstlisting}
+
+\begin{center}
+\small
+\begin{tabular}{l*{10}{c}}
+\toprule
+Période & 2013 T1 & T2 & T3 & T4 & 2014 T1 & T2 & T3 & T4 & 2015 T1 & T2 \\
+\midrule
+Inflation (\%) & 2,30 & 2,49 & 1,74 & 0,98 & 0,44 & 0,03 & 0,15 & 1,15 & 1,50 & 2,00 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection*{Requête 2 -- statistiques globales}
+\begin{lstlisting}
+SELECT COUNT(*) AS nb_trimestres, ROUND(AVG(inflation),2) AS moyenne,
+       ROUND(MIN(inflation),2) AS minimum, ROUND(MAX(inflation),2) AS maximum
+FROM inflation;
+\end{lstlisting}
+
+\begin{center}
+\begin{tabular}{cccc}
+\toprule
+nb\_trimestres & moyenne & minimum & maximum \\
+\midrule
+54 & 1,85 & $-0{,}20$ & 9,10 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+%--------------------------------------------------------------
+\section{Analyse de l'évolution du taux d'inflation}
+
+\subsection*{Requête 3 -- évolution trimestrielle}
+\begin{lstlisting}
+SELECT ordre, periode, inflation FROM inflation ORDER BY ordre;
+\end{lstlisting}
+
+\fig{fig1_evolution.png}{0.95\textwidth}{Évolution trimestrielle de l'inflation (pointillé : repère de 2\,\%).}
+
+De 2013 à 2021, l'inflation reste faible, entre $-0{,}2$\,\% et 2,5\,\%, et passe la plupart du temps sous le repère de 2\,\%. À partir de 2021 T4 (2,5\,\%), elle monte fortement jusqu'à un sommet de \textbf{9,1\,\% en 2023 T1}, puis redescend jusqu'à 1,2\,\% en 2024 T1 et reste basse ensuite.
+
+\subsection*{Requête 4 -- inflation moyenne par année}
+\begin{lstlisting}
+SELECT annee, ROUND(AVG(inflation),2) AS inflation_moyenne, COUNT(*) AS nb_trimestres
+FROM inflation GROUP BY annee ORDER BY annee;
+\end{lstlisting}
+
+\begin{center}
+\scriptsize
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{l*{14}{c}}
+\toprule
+annee & 2013 & 2014 & 2015 & 2016 & 2017 & 2018 & 2019 & 2020 & 2021 & 2022 & 2023 & 2024 & 2025 & 2026 \\
+\midrule
+inflation\_moyenne & 1,88 & 0,44 & 1,60 & 1,65 & 0,75 & 1,57 & 0,28 & 0,63 & 1,40 & 6,67 & 6,15 & 1,00 & 0,68 & 0,50 \\
+nb\_trimestres & 4 & 4 & 4 & 4 & 4 & 4 & 4 & 4 & 4 & 4 & 4 & 4 & 4 & 2 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\fig{fig2_moyenne_annee.png}{0.8\textwidth}{Inflation moyenne par année (rouge : au-dessus de 2\,\%).}
+
+Seules \textbf{2022 (6,67\,\%)} et \textbf{2023 (6,15\,\%)} sont nettement au-dessus de 2\,\%. Toutes les autres années vont de 0,28\,\% (2019) à 1,88\,\% (2013). L'année 2026 ne compte que deux trimestres.
+
+\subsection*{Requête 5 -- les 10 trimestres les plus élevés}
+\begin{lstlisting}
+SELECT periode, inflation FROM inflation ORDER BY inflation DESC LIMIT 10;
+\end{lstlisting}
+
+\begin{center}
+\scriptsize
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{l*{10}{c}}
+\toprule
+periode & 2023 T1 & 2022 T4 & 2022 T3 & 2023 T2 & 2022 T2 & 2023 T3 & 2022 T1 & 2023 T4 & 2021 T4 & 2013 T2 \\
+\midrule
+inflation & 9,1 & 8,3 & 8,1 & 6,8 & 6,3 & 4,9 & 4,0 & 3,8 & 2,5 & 2,49 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\fig{fig3_top10.png}{0.8\textwidth}{Les 10 trimestres où l'inflation a été la plus forte.}
+
+Les huit trimestres les plus élevés sont tous ceux de \textbf{2022 T1 à 2023 T4}. Les deux suivants, 2021 T4 (2,5\,\%) et 2013 T2 (2,49\,\%), sont très en dessous : l'épisode 2022-2023 se distingue nettement du reste de la série.
+
+\subsection*{Requête 6 -- saisonnalité par trimestre}
+\begin{lstlisting}
+SELECT trimestre, ROUND(AVG(inflation),2) AS inflation_moyenne,
+       ROUND(MIN(inflation),2) AS minimum, ROUND(MAX(inflation),2) AS maximum
+FROM inflation GROUP BY trimestre ORDER BY trimestre;
+\end{lstlisting}
+
+\begin{center}
+\begin{tabular}{cccc}
+\toprule
+trimestre & moyenne & minimum & maximum \\
+\midrule
+T1 & 1,84 & $-0{,}20$ & 9,1 \\
+T2 & 1,88 & 0,00 & 6,8 \\
+T3 & 1,89 & 0,15 & 8,1 \\
+T4 & 1,78 & $-0{,}20$ & 8,3 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\fig{fig4_saisonnalite.png}{0.65\textwidth}{Inflation moyenne selon le trimestre.}
+
+Les moyennes des quatre trimestres sont très proches (de 1,78\,\% à 1,89\,\%) : aucun trimestre ne se détache.
+
+\subsection*{Requête 7 -- comparaison par grande période}
+\begin{lstlisting}
+SELECT CASE WHEN annee <= 2019 THEN '1. 2013-2019 : avant Covid'
+            WHEN annee <= 2021 THEN '2. 2020-2021 : Covid'
+            WHEN annee <= 2023 THEN '3. 2022-2023 : pic d inflation'
+            ELSE '4. 2024-2026 : apres le pic' END AS periode_eco,
+       COUNT(*) AS nb_trimestres, ROUND(AVG(inflation),2) AS inflation_moyenne,
+       ROUND(MAX(inflation),2) AS maximum
+FROM inflation GROUP BY periode_eco ORDER BY periode_eco;
+\end{lstlisting}
+
+\begin{center}
+\begin{tabular}{lccc}
+\toprule
+periode\_eco & nb & moyenne & max \\
+\midrule
+2013-2019 : avant Covid & 28 & 1,17 & 2,49 \\
+2020-2021 : Covid & 8 & 1,01 & 2,50 \\
+2022-2023 : pic d'inflation & 8 & 6,41 & 9,10 \\
+2024-2026 : après le pic & 10 & 0,77 & 2,00 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\fig{fig5_periodes.png}{0.8\textwidth}{Inflation moyenne par grande période.}
+
+L'inflation moyenne de 2022-2023 (6,41\,\%) est plus de cinq fois celle d'avant Covid (1,17\,\%). Depuis 2024, la moyenne (0,77\,\%) est plus basse qu'avant la crise, et le maximum est de 2,00\,\%.
+
+\subsection*{Requête 8 -- variation d'un trimestre à l'autre}
+\begin{lstlisting}
+SELECT ordre, periode, inflation,
+       ROUND(inflation - LAG(inflation) OVER (ORDER BY ordre), 2) AS variation
+FROM inflation ORDER BY ordre;
+\end{lstlisting}
+
+\fig{fig6_variation.png}{0.95\textwidth}{Variation de l'inflation par rapport au trimestre précédent, en points (rouge : hausse, vert : baisse).}
+
+Entre 2022 T1 et 2023 T1, cinq hausses se suivent ($+1{,}5$, $+2{,}3$, $+1{,}8$, $+0{,}2$ puis $+0{,}8$ point) ; la plus forte est en \textbf{2022 T2} ($+2{,}3$). De 2023 T2 à 2024 T1, quatre baisses se suivent ($-2{,}3$, $-1{,}9$, $-1{,}1$ puis $-2{,}6$ points) ; la plus forte est en \textbf{2024 T1}. La montée et la descente sont donc rapides et durent plusieurs trimestres.
+
+\subsection*{Requêtes 9 et 10 -- déflation et dépassements de 2\,\%}
+\begin{lstlisting}
+SELECT periode, inflation FROM inflation WHERE inflation < 0 ORDER BY ordre;
+SELECT annee, SUM(CASE WHEN inflation > 2 THEN 1 ELSE 0 END) AS trimestres_au_dessus_de_2
+FROM inflation GROUP BY annee ORDER BY annee;
+\end{lstlisting}
+
+\begin{center}
+\small
+\begin{tabular}{lccc}
+\toprule
+periode (Requête 9) & 2019 T1 & 2025 T4 & 2026 T1 \\
+\midrule
+inflation & $-0{,}2$ & $-0{,}2$ & $-0{,}1$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{center}
+\scriptsize
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{l*{14}{c}}
+\toprule
+annee (Requête 10) & 2013 & 2014 & 2015 & 2016 & 2017 & 2018 & 2019 & 2020 & 2021 & 2022 & 2023 & 2024 & 2025 & 2026 \\
+\midrule
+trimestres $>2$ & 2 & 0 & 0 & 0 & 0 & 1 & 0 & 0 & 1 & 4 & 4 & 0 & 0 & 0 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\fig{fig7_depassements.png}{0.8\textwidth}{Nombre de trimestres avec une inflation supérieure à 2\,\%, par année.}
+
+Trois trimestres seulement ont une inflation négative (2019 T1, 2025 T4 et 2026 T1), et à chaque fois de très peu. Les dépassements de 2\,\% sont concentrés en 2022 et 2023 (quatre trimestres chacune), avec seulement quatre autres cas isolés (deux en 2013, un en 2018, un en 2021).
+
+%--------------------------------------------------------------
+\section{Les causes de l'inflation}
+Les causes sont présentées selon les périodes distinguées dans l'analyse.
+
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{2013-2019 (inflation faible).} Le taux reste le plus souvent sous 2\,\%, avec une moyenne de 1,17\,\%. Cela correspond à une période de prix relativement stables.
+  \item \textbf{2020-2021 (Covid).} Les perturbations de l'activité et de la demande pendant la crise sanitaire s'accompagnent d'une inflation moyenne modérée (1,01\,\%). À la fin de 2021, le taux commence à remonter (2,5\,\% en 2021 T4).
+  \item \textbf{2022-2023 (pic d'inflation).} Les explications le plus souvent avancées sont la hausse des prix mondiaux de l'énergie, des produits alimentaires et des matières premières importées, les tensions sur les chaînes d'approvisionnement et les aléas climatiques qui pèsent sur la production agricole.
+  \item \textbf{Depuis 2024 (retour à un niveau bas).} L'analyse montre une baisse très rapide (jusqu'à $-2{,}6$ points en 2024 T1). Elle s'explique en partie par la façon dont le taux est calculé : l'inflation est une variation sur douze mois, donc quand les prix cessent de monter fortement, le taux annuel retombe mécaniquement, même si le niveau des prix reste élevé.
+\end{itemize}
+
+%--------------------------------------------------------------
+\section{Comment prévoir le taux d'inflation à partir de cette analyse}
+L'analyse de l'évolution permet de tirer cinq enseignements pour prévoir l'inflation à venir.
+
+\begin{enumerate}[leftmargin=1.5em]
+  \item \textbf{Le taux évolue progressivement.} Les graphiques 1 et 6 montrent que le taux suit des tendances de plusieurs trimestres (cinq hausses de suite en 2022-2023, quatre baisses de suite ensuite) plutôt que des sauts isolés. La dernière valeur observée est donc le meilleur point de départ pour prévoir les prochains trimestres : elle est de 1,1\,\% en 2026 T2, après $-0{,}1$\,\% en 2026 T1 et $-0{,}2$\,\% en 2025 T4.
+  \item \textbf{Il existe un niveau « normal » bas.} Avant la crise la moyenne est de 1,17\,\%, et elle est de 0,77\,\% depuis 2024 ; le taux n'a dépassé 2\,\% que 12 fois sur 54 trimestres, et plus du tout depuis 2024. En l'absence de choc, la prévision raisonnable est donc un taux faible, proche des valeurs récentes (de $-0{,}2$\,\% à 2,0\,\% depuis 2024, avec une moyenne de 0,77\,\%).
+  \item \textbf{Il n'y a pas de saisonnalité.} Les moyennes par trimestre sont presque égales (Requête 6) : inutile de corriger la prévision selon le trimestre visé.
+  \item \textbf{Les chocs sont le vrai risque.} L'épisode 2022-2023 est très différent du reste de la série (6,41\,\% de moyenne, maximum de 9,1\,\%). Aucune valeur d'avant 2021 ne l'annonçait, et l'historique du taux seul ne permet pas de prévoir l'arrivée d'un tel choc. En revanche, une fois le choc commencé, les variations de la Requête 8 sont un signal d'alerte : des hausses supérieures à 1 point sur plusieurs trimestres de suite (2021 T4, 2022 T1, T2 et T3) précèdent les niveaux les plus élevés.
+  \item \textbf{La remontée récente est à surveiller.} Le taux est passé de $-0{,}1$\,\% à 1,1\,\% en un trimestre ($+1{,}2$ point en 2026 T2). Si les trimestres suivants confirment la hausse, l'inflation pourrait se rapprocher de 2\,\% ; sinon, elle retournera vers ses niveaux récents.
+\end{enumerate}
+
+\textbf{Scénarios pour les prochains trimestres.} \emph{Scénario central} : l'inflation reste basse, entre les niveaux de 2024-2026 (moyenne 0,77\,\%, maximum 2,00\,\%). \emph{Scénario haut} : la hausse de 2026 T2 se poursuit et le taux s'approche de 2\,\%. \emph{Scénario de choc} : un nouvel épisode comparable à 2022-2023, que l'analyse du passé ne permet pas d'anticiper mais dont elle indique les signes précurseurs.
+
+\textbf{Limites.} Cette approche repose sur 54 observations et sur le seul historique du taux d'inflation ; elle donne des ordres de grandeur et non des valeurs précises. Elle est plus fiable à court terme (un à deux trimestres) qu'à un an.
+
+%--------------------------------------------------------------
+\section{Conclusion}
+L'analyse SQL montre une inflation en général basse (1,85\,\% en moyenne), interrompue par un épisode exceptionnel en 2022-2023 (maximum 9,1\,\% en 2023 T1) puis suivie d'un retour rapide à un niveau bas. À partir de ces résultats, on peut prévoir un taux faible à court terme, proche des valeurs récentes, avec un risque de remontée vers 2\,\% si la hausse de 2026 T2 se confirme, et un risque de choc que seule l'observation de nouveaux signaux (hausses fortes et répétées) permettrait de reconnaître à temps.
+
+\end{document}
