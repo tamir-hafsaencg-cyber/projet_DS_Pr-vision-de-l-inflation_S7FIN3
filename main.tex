@@ -1,0 +1,259 @@
+\documentclass[12pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{lmodern}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{titlesec}
+\usepackage{hyperref}
+\usepackage{amsmath}
+
+\graphicspath{{figs/}}
+
+\definecolor{bleu}{RGB}{47,84,150}
+\titleformat{\section}{\Large\bfseries\color{bleu}}{\thesection.}{0.5em}{}
+\titleformat{\subsection}{\large\bfseries\color{bleu}}{}{0em}{}
+\hypersetup{colorlinks=true,linkcolor=bleu,urlcolor=bleu}
+
+\setlength{\parskip}{0.6em}
+\setlength{\parindent}{0pt}
+
+\begin{document}
+
+\begin{center}
+    {\Huge\bfseries\color{bleu} PRÉVISION DE L'INFLATION}\\[1em]
+    {\Large Le chômage et le taux directeur aident-ils à prévoir l'inflation à un horizon de 12 mois ?}\\[1em]
+    {\large Rapport d'analyse basé sur le notebook du projet}
+\end{center}
+
+\vspace{1cm}
+
+%------------------------------------------------------------
+\section{Introduction}
+
+L'objectif de ce projet est d'étudier la possibilité de prévoir l'inflation américaine à un horizon de douze mois. La question principale est de savoir si le taux de chômage et le taux directeur apportent des informations utiles pour améliorer cette prévision.
+
+Pour répondre à cette question, nous avons utilisé des données mensuelles provenant de la base FRED. Le travail consiste à préparer les séries, construire des variables retardées, entraîner plusieurs modèles de prévision et comparer leurs performances sur une période qui n'a pas été utilisée pour l'entraînement.
+
+L'analyse compare trois approches : une méthode de référence basée sur la dernière valeur observée, une régression Ridge et un modèle de Gradient Boosting. La performance est principalement évaluée avec le RMSE.
+
+%------------------------------------------------------------
+\section{Données utilisées}
+
+Le projet utilise trois séries économiques mensuelles : l'indice des prix à la consommation, le taux de chômage et le taux directeur. L'inflation est calculée comme la variation annuelle de l'indice des prix.
+
+Afin de prévoir l'inflation douze mois à l'avance, le notebook utilise également des valeurs passées des différentes variables. Des retards de plusieurs mois permettent au modèle de tenir compte de l'évolution récente de l'économie.
+
+%------------------------------------------------------------
+\section{Analyse des données}
+
+\subsection{Graphique 1 -- Évolution des principales variables}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{graphique1.png}
+    \caption{Évolution des principales variables (inflation, chômage, taux directeur)}
+\end{figure}
+
+Ce graphique présente l'évolution historique de l'inflation, du taux de chômage et du taux directeur. Il montre que ces variables connaissent des périodes de forte variation et que leur comportement change selon les périodes économiques. Cette évolution historique justifie l'utilisation de données retardées pour essayer de prévoir l'inflation future.
+
+\subsection{Graphique 2 -- Évolution par décennie}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{graphique2.png}
+    \caption{Moyenne par décennie}
+\end{figure}
+
+Le graphique compare les niveaux moyens des variables selon les décennies. Il permet de constater que l'environnement économique n'est pas stable dans le temps. Certaines décennies sont marquées par une inflation plus élevée ou par des politiques monétaires différentes.
+
+\subsection{Graphique 3 -- Distribution de l'inflation}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{graphique3.png}
+    \caption{Distribution de l'inflation et inflation par décennie}
+\end{figure}
+
+Ce graphique montre la répartition des valeurs de l'inflation et son évolution selon les périodes. Il rappelle que les valeurs extrêmes sont moins fréquentes, mais qu'elles sont particulièrement difficiles à prévoir.
+
+\subsection{Graphique 4 -- Relation avec l'inflation future}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{graphique4.png}
+    \caption{Relation entre les variables actuelles et l'inflation à 12 mois}
+\end{figure}
+
+Les graphiques de relation permettent d'observer le lien entre les variables disponibles aujourd'hui et l'inflation observée douze mois plus tard. Les relations ne semblent pas parfaitement simples ou linéaires, ce qui explique l'intérêt de comparer un modèle linéaire et un modèle plus flexible.
+
+\subsection{Graphique 5 -- Corrélations avec différents retards}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{graphique5.png}
+    \caption{Corrélations selon le retard et matrice de corrélation}
+\end{figure}
+
+L'analyse des corrélations montre comment la relation avec l'inflation future évolue selon le nombre de mois de retard. Les retards sont donc utilisés pour donner aux modèles davantage d'informations sur la dynamique passée des séries.
+
+%------------------------------------------------------------
+\section{Méthode de prévision}
+
+Après le prétraitement, le jeu de données contient 17 variables explicatives. Les données sont séparées chronologiquement : les premières observations servent à entraîner les modèles et les observations les plus récentes servent à tester leur capacité à prévoir de nouvelles données.
+
+La première méthode est la « dernière valeur ». Elle suppose que l'inflation dans douze mois sera proche de l'inflation observée actuellement. Cette méthode sert de référence.
+
+La régression Ridge est une version de la régression linéaire qui permet de mieux gérer les situations où plusieurs variables sont proches ou corrélées entre elles. Le Gradient Boosting est un modèle plus flexible, capable de prendre en compte des relations plus complexes.
+
+Le RMSE est utilisé pour comparer les modèles. Plus le RMSE est faible, plus les prévisions sont proches des valeurs réellement observées.
+
+%------------------------------------------------------------
+\section{Comparaison des modèles}
+
+Les résultats principaux du notebook sont les suivants :
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{lccc}
+        \toprule
+        \textbf{Modèle} & \textbf{RMSE validation} & \textbf{RMSE test} & \textbf{MAE test} \\
+        \midrule
+        Dernière valeur   & 1,987 & 2,356 & 1,658 \\
+        Ridge             & 2,848 & 2,381 & 1,724 \\
+        Gradient Boosting & 2,967 & 3,612 & 2,626 \\
+        \bottomrule
+    \end{tabular}
+    \caption{Performances des modèles}
+\end{table}
+
+\subsection{Graphique 6 -- Comparaison des modèles}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{graphique6.png}
+    \caption{Comparaison des modèles à 12 mois (validation croisée temporelle)}
+\end{figure}
+
+Le résultat le plus important est que le modèle de référence obtient le meilleur RMSE sur la période de test. La régression Ridge est très proche, mais elle ne fait pas mieux que la dernière valeur. Le Gradient Boosting donne des résultats moins bons. Dans ce projet, un modèle plus complexe n'améliore donc pas automatiquement la prévision.
+
+%------------------------------------------------------------
+\section{Le chômage et le taux directeur améliorent-ils la prévision ?}
+
+Pour répondre directement à la question du projet, le notebook compare plusieurs groupes de variables : l'inflation passée seule, l'inflation avec le chômage, l'inflation avec le taux directeur et enfin l'ensemble des variables.
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{lcc}
+        \toprule
+        \textbf{Variables utilisées} & \textbf{RMSE Ridge} & \textbf{RMSE Gradient Boosting} \\
+        \midrule
+        Inflation seule           & 2,030 & 3,144 \\
+        Inflation + chômage       & 2,360 & 3,572 \\
+        Inflation + taux directeur & 2,455 & 3,583 \\
+        Toutes les variables      & 2,381 & 3,612 \\
+        \bottomrule
+    \end{tabular}
+    \caption{RMSE selon les groupes de variables utilisés}
+\end{table}
+
+\subsection{Graphique 7 -- Effet des groupes de variables}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{graphique7.png}
+    \caption{Effet des groupes de variables (validation croisée et jeu de test)}
+\end{figure}
+
+Cette comparaison répond directement à la question posée. Dans les résultats obtenus, l'inflation passée seule donne les meilleures performances. L'ajout du chômage ou du taux directeur augmente le RMSE au lieu de le diminuer.
+
+Cela ne signifie pas que le chômage et le taux directeur n'ont aucune importance économique. Cela signifie simplement que, dans notre modèle et pour une prévision à douze mois, ils n'apportent pas suffisamment d'information supplémentaire pour améliorer les résultats.
+
+%------------------------------------------------------------
+\section{Analyse des prévisions dans le temps}
+
+\subsection{Graphique 8 -- Inflation réelle et prévisions}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{graphique8.png}
+    \caption{Inflation réelle et prévue à 12 mois (jeu de test)}
+\end{figure}
+
+Le graphique permet de comparer directement les valeurs réelles et les prévisions. Les modèles suivent mieux les périodes relativement stables et rencontrent davantage de difficultés lorsque l'économie connaît des changements rapides.
+
+Le notebook montre notamment que la période 2020--2023 est particulièrement difficile à prévoir. Les chocs économiques et les variations rapides de l'inflation rendent les prévisions à un an plus incertaines.
+
+%------------------------------------------------------------
+\section{Importance des variables}
+
+\subsection{Graphique 9 -- Importance individuelle des variables}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{graphique9.png}
+    \caption{Coefficients de la régression Ridge et importance des variables du Gradient Boosting}
+\end{figure}
+
+Ce graphique permet d'identifier les variables auxquelles les modèles accordent le plus d'importance. Il faut cependant faire une distinction importante : une variable peut être utilisée par un modèle sans que son ajout améliore réellement la précision des prévisions sur de nouvelles données.
+
+\subsection{Graphique 10 -- Importance des groupes de variables}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{graphique10.png}
+    \caption{Importance par permutation des groupes de variables (jeu de test)}
+\end{figure}
+
+L'analyse par groupes complète l'analyse individuelle. Elle aide à vérifier si un ensemble de variables, comme le chômage ou le taux directeur, apporte réellement une information utile au modèle. Les résultats doivent toujours être interprétés avec les performances globales, notamment le RMSE.
+
+%------------------------------------------------------------
+\section{Quelques notions utilisées dans le projet}
+
+\textbf{Inflation annuelle :} elle mesure la variation des prix par rapport au même mois de l'année précédente. Elle permet de suivre l'évolution du niveau général des prix.
+
+\textbf{Retard (lag) :} il s'agit d'une valeur passée d'une variable. Par exemple, le chômage observé il y a trois mois peut être utilisé pour essayer de prévoir l'inflation future.
+
+\textbf{RMSE :} c'est une mesure de l'erreur de prévision. Un RMSE plus faible signifie que, en moyenne, les prévisions sont plus proches des valeurs réelles.
+
+\textbf{Ridge :} c'est un modèle de régression qui limite l'influence excessive de certaines variables lorsque plusieurs variables sont fortement liées entre elles.
+
+\textbf{Gradient Boosting :} c'est une méthode qui construit progressivement plusieurs petits modèles pour améliorer la prévision. Elle peut être performante, mais elle peut aussi être moins stable lorsqu'elle est appliquée à de nouvelles périodes très différentes des données d'entraînement.
+
+%------------------------------------------------------------
+\section{Limite importante : le biais d'anticipation}
+
+Les données économiques peuvent être révisées après leur publication. Cela signifie que les données actuellement disponibles ne correspondent pas toujours exactement aux informations qui étaient connues au moment d'une prévision passée.
+
+Cette situation peut créer un biais d'anticipation, appelé « \textit{look-ahead bias} ». Pour une étude encore plus réaliste, il faudrait utiliser les versions des données qui étaient réellement disponibles à chaque date historique.
+
+%------------------------------------------------------------
+\section{Conclusion}
+
+L'objectif du projet était de déterminer si le taux de chômage et le taux directeur permettent de mieux prévoir l'inflation à un horizon de douze mois.
+
+Les résultats obtenus donnent une réponse claire pour les données et les modèles étudiés : l'ajout du chômage et du taux directeur n'améliore pas la performance par rapport à l'utilisation de l'inflation passée seule.
+
+Le modèle basé sur la dernière valeur obtient le meilleur résultat global sur la période de test, tandis que la régression Ridge reste proche. Le Gradient Boosting est moins performant dans cette application.
+
+La conclusion principale est donc que l'inflation passée contient déjà une grande partie de l'information utile pour cette prévision. Le chômage et le taux directeur restent des variables importantes pour comprendre l'économie, mais leur contribution supplémentaire à la prévision de l'inflation à douze mois est limitée dans les résultats de ce projet.
+
+\end{document}\documentclass{article}
+\usepackage{graphicx} % Required for inserting images
+
+\title{projetprevision inflation}
+\author{hafsa tamir}
+\date{November 2026}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+
+\end{document}
